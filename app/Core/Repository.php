@@ -33,6 +33,11 @@ abstract class Repository
         return Database::connection();
     }
 
+    public function tableName(): string
+    {
+        return $this->table;
+    }
+
     protected function q(string $identifier): string
     {
         return Database::quoteIdentifier($identifier);
@@ -296,7 +301,7 @@ abstract class Repository
     }
 
     /** Проверка существования колонки (кешируется). */
-    private function hasColumn(string $column): bool
+    protected function hasColumn(string $column): bool
     {
         static $cache = [];
         if (!isset($cache[$this->table])) {
