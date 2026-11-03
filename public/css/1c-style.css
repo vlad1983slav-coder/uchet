@@ -1,0 +1,228 @@
+/* ==========================================================================
+   UCHET — интерфейс в стиле «1С:Предприятие 8.3»
+   Левый навигатор, верхняя панель, «жёлтые» командные кнопки, табличные формы.
+   ========================================================================== */
+
+:root {
+    --c-sidebar-bg: #eceff1;
+    --c-sidebar-border: #cfd8dc;
+    --c-nav-section: #78909c;
+    --c-nav-item: #37474f;
+    --c-nav-active-bg: #ffd54f;      /* фирменный жёлтый 1С */
+    --c-nav-active-border: #ffb300;
+    --c-topbar-bg: #f7f3e3;
+    --c-topbar-border: #e0d9b8;
+    --c-accent: #ffd54f;
+    --c-accent-hover: #ffca28;
+    --c-header-bg: #f5f5f5;
+    --c-table-border: #d7d7d7;
+    --c-row-hover: #fff8e1;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    background: #f0f2f5;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    font-size: 13px;
+}
+
+.app-shell { display: flex; min-height: 100vh; }
+
+/* ------------------------- левый навигатор ------------------------- */
+.sidebar {
+    width: 248px;
+    flex: 0 0 248px;
+    background: var(--c-sidebar-bg);
+    border-right: 1px solid var(--c-sidebar-border);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+.sidebar-brand {
+    padding: 10px 14px;
+    background: var(--c-accent);
+    border-bottom: 1px solid var(--c-nav-active-border);
+}
+.brand-mark { font-weight: 800; font-size: 18px; letter-spacing: 2px; color: #4e342e; }
+.brand-sub { display: block; font-size: 10px; color: #6d4c41; text-transform: uppercase; letter-spacing: 1px; }
+
+.navigator { flex: 1; overflow-y: auto; padding: 6px 0; }
+
+.nav-section {
+    padding: 8px 14px 3px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--c-nav-section);
+}
+
+.nav-item {
+    display: block;
+    padding: 5px 14px 5px 22px;
+    color: var(--c-nav-item);
+    text-decoration: none;
+    border-left: 3px solid transparent;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nav-item:hover { background: #dde3e6; }
+.nav-item.active {
+    background: var(--c-nav-active-bg);
+    border-left-color: var(--c-nav-active-border);
+    font-weight: 600;
+}
+
+.sidebar-footer { border-top: 1px solid var(--c-sidebar-border); padding: 8px 10px; }
+.user-chip { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.user-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #546e7a; color: #fff; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.user-meta { display: flex; flex-direction: column; line-height: 1.15; }
+.user-meta small { color: #607d8b; }
+
+/* ------------------------- правая область ------------------------- */
+.main-area { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.topbar {
+    background: var(--c-topbar-bg);
+    border-bottom: 1px solid var(--c-topbar-border);
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.topbar-title { font-size: 15px; font-weight: 700; color: #5d4037; }
+
+.content { padding: 14px 16px 40px; }
+
+/* ------------------------- карточки и таблицы в стиле 1С ------------------------- */
+.card-1c {
+    background: #fff;
+    border: 1px solid var(--c-table-border);
+    border-radius: 3px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05);
+}
+.card-1c-header {
+    background: var(--c-header-bg);
+    border-bottom: 1px solid var(--c-table-border);
+    padding: 7px 12px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+.card-1c-body { padding: 12px; }
+
+.table-1c { font-size: 12.5px; }
+.table-1c thead th {
+    background: var(--c-header-bg);
+    border-bottom: 2px solid var(--c-table-border) !important;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    color: #555;
+    white-space: nowrap;
+}
+.table-1c td, .table-1c th { border-color: var(--c-table-border) !important; vertical-align: middle; }
+.table-1c tbody tr:hover { background: var(--c-row-hover); }
+
+.sort-link { color: inherit; text-decoration: none; }
+.sort-link:hover { text-decoration: underline; }
+
+/* панель фильтров над журналом */
+.filters-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--c-table-border);
+    background: #fafafa;
+}
+
+/* командная панель формы документа */
+.cmdbar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    border-top: 1px solid var(--c-table-border);
+    border-bottom: 1px solid var(--c-table-border);
+    background: var(--c-topbar-bg);
+    margin: 10px 0;
+}
+.cmdbar .btn-warning, .btn-warning {
+    background: var(--c-accent);
+    border-color: var(--c-nav-active-border);
+    color: #3e2723;
+}
+.cmdbar .btn-warning:hover, .btn-warning:hover { background: var(--c-accent-hover); }
+
+/* ------------------------- статусы документов ------------------------- */
+.status-badge { font-size: 11px; padding: 4px 8px; }
+.status-draft { background-color: #9e9e9e; }   /* серый — черновик */
+.status-posted { background-color: #43a047; }  /* зелёный — проведён */
+.status-error { background-color: #e53935; }   /* красный — ошибка */
+
+/* ------------------------- KPI ------------------------- */
+.kpi-card {
+    background: #fff;
+    border: 1px solid var(--c-table-border);
+    border-left: 4px solid var(--c-nav-active-border);
+    border-radius: 3px;
+    padding: 12px 14px;
+}
+.kpi-value { font-size: 20px; font-weight: 800; color: #37474f; }
+.kpi-label { font-size: 11px; color: #78909c; text-transform: uppercase; letter-spacing: .5px; }
+
+.section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--c-nav-section);
+    border-bottom: 1px solid var(--c-table-border);
+    padding-bottom: 3px;
+    margin: 16px 0 6px;
+}
+
+.doc-rekvizity td { padding: 3px 8px; }
+
+/* ------------------------- табличная часть документа ------------------------- */
+.lines-table input.form-control-sm { font-size: 12px; }
+.line-row .line-name { max-width: 320px; }
+
+/* автокомплит артикула */
+.autocomplete-list {
+    position: absolute;
+    z-index: 1000;
+    background: #fff;
+    border: 1px solid #bdbdbd;
+    border-radius: 3px;
+    box-shadow: 0 4px 10px rgba(0,0,0,.15);
+    max-height: 240px;
+    overflow-y: auto;
+    min-width: 320px;
+}
+.autocomplete-list .ac-item { padding: 6px 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+.autocomplete-list .ac-item:hover, .autocomplete-list .ac-item.active { background: var(--c-accent); }
+.autocomplete-list .ac-item .ac-article { font-weight: 700; margin-right: 6px; }
+.autocomplete-list .ac-item .ac-price { color: #6d4c41; float: right; }
+
+td { position: relative; }
+
+.pagination-bar { font-size: 12px; }
+
+.form-label { font-size: 12px; font-weight: 600; color: #455a64; margin-bottom: 2px; }
