@@ -1,0 +1,42 @@
+{
+    "name": "uchet/warehouse-erp",
+    "description": "Система складского учёта в стиле 1С:Предприятие (PHP 8.2+ / MySQL 8.0, MVC + Service Layer + Repository)",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*"
+    },
+    "suggest": {
+        "dompdf/dompdf": "^3.0 — для печатных форм HTML→PDF (установите, если нужна печать в PDF)"
+    },
+    "autoload": {
+        "psr-4": {
+            "Uchet\\": "app/"
+        },
+        "files": [
+            "app/Core/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Uchet\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "scripts": {
+        "serve": "php -S 0.0.0.0:8000 -t public public/index.php",
+        "db:deploy": [
+            "mysql -u root -p < database/schema.sql",
+            "mysql -u root -p < database/seeds.sql"
+        ]
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
