@@ -1,0 +1,16 @@
+# Все запросы, кроме существующих файлов/каталогов, — в front controller
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Для nginx: location / { try_files $uri $uri/ /index.php?$query_string; }
+
+# Запрет доступа к конфиденциальным файлам, если DocumentRoot указали на корень проекта
+<FilesMatch "^(\.env|composer\.(json|lock)|.*\.sql)$">
+    Require all denied
+</FilesMatch>
