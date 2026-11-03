@@ -27,7 +27,8 @@ DB_USER=root DB_PASS=secret ./database/deploy.sh
 mysql -u root -p < database/schema.sql
 mysql -u root -p uchet < database/seeds.sql
 
-# 3. настройте подключение (переменные окружения или config/config.php)
+# 3. настройте подключение: скопируйте .env.example в .env и заполните
+#    (приложение читает .env автоматически; см. также переменные окружения и config/config.php)
 cp .env.example .env        # DB_HOST, DB_DATABASE, DB_USERNAME, DB_PASSWORD, APP_URL...
 
 # 4. запуск
@@ -46,6 +47,181 @@ composer serve              # = php -S 0.0.0.0:8000 -t public public/index.php
 | admin   | admin123    | admin        |
 | sklad   | sklad123    | кладовщик    |
 | manager | manager123  | менеджер     |
+
+## Развёртывание на хостинге (production)
+
+### 0. Требования к хостингу
+
+- **PHP 8.2+** с расширениями `pdo_mysql`, `mbstring`, `json`, `openssl`; Apache с `mod_rewrite` **или** nginx; ~64 МБ памяти
+- **MySQL 8.0+ / MariaDB 10.6+**; выделенная БД и отдельный пользователь (не root!)
+- **HTTPS** (Let's Encrypt) — обязательно: по сети ходят пароли и сессионные cookie
+- Веб-сервер должен иметь право писать только в `storage/` (логи, сессии, кеш)
+
+### 1. Общий порядок развёртывания (любой хостинг)
+
+1. Загрузите **весь проект** на сервер (git clone или SFTP) — не только `public/`. Например, в `/var/www/uchet`.
+2. Зависимости: `composer install --no-dev --optimize-autoloader` (можно пропустить — есть встроенный fallback-автозагрузчик PSR-4).
+3. Создайте БД и пользователя с правами только на неё:
+   ```sql
+   CREATE DATABASE uchet CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   CREATE USER 'uchet'@'localhost' IDENTIFIED BY 'очень_сложный_пароль';
+   GRANT ALL PRIVILEGES ON uchet.* TO 'uchet'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+4. Наполните схему: `php database/migrate.php` (применит `schema.sql`, `seeds.sql` и все новые файлы из `database/migrations/`; повторный запуск безопасен — применяются только новые миграции).
+   Если на хостинге нет CLI (shared-хостинг) — импортируйте `database/schema.sql` и `database/seeds.sql` через phpMyAdmin (вкладка «SQL», большие файлы — частями).
+5. Настройте подключение: `cp .env.example .env` и заполните (приложение читает `.env` автоматически):
+   ```ini
+   APP_DEBUG=false
+   APP_URL=https://erp.example.ru
+   APP_TIMEZONE=Asia/Krasnoyarsk
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=uchet
+   DB_USERNAME=uchet
+   DB_PASSWORD=очень_сложный_пароль
+   ```
+6. **DocumentRoot веб-сервера должен указывать на каталог `public/`** (варианты ниже). Из web доступен только `public/`; `.htaccess` дополнительно запрещает отдачу `.env`, `*.sql`, `composer.json`.
+7. Права на файлы:
+   ```bash
+   sudo chown -R www-data:www-data /var/www/uchet/storage   # логи/сессии/кеш — пишет веб-сервер
+   sudo chmod -R 750 /var/www/uchet/storage
+   sudo chown -R root:root /var/www/uchet                     # остальное — только чтение
+   sudo find /var/www/uchet -type f -exec chmod 644 {} \;
+   sudo find /var/www/uchet -type d -exec chmod 755 {} \;
+   ```
+8. Откройте `https://ваш-домен/login`, войдите и **сразу смените пароли** `admin` / `sklad` / `manager` (Администрирование → Пользователи) или отключите лишних.
+9. Проверьте end-to-end: создайте ПН, проведите её, посмотрите «Отчёты → Остатки» и «Печать».
+
+### 2. Вариант A: shared-хостинг (cPanel / Plesk / ISPmanager)
+
+1. Залейте проект целиком в домашнюю директорию, например `~/uchet` (вне `public_html`).
+2. В панели домена смените **DocumentRoot** на `~/uchet/public`. Если панель не позволяет:
+   - symlink: `ln -s ~/uchet/public ~/public_html` (предварительно очистите `public_html`), **или**
+   - залейте содержимое `public/` в `public_html/`, а остаток проекта — в `~/uchet_app`, и в `public_html/index.php` замените `define('ROOT', dirname(__DIR__));` на `define('ROOT', '/home/USER/uchet_app');`.
+3. БД создайте в разделе «Базы данных MySQL», пользователя — там же; импортируйте `database/schema.sql` и `database/seeds.sql` через phpMyAdmin.
+4. `.env` создайте через файловый менеджер (или задайте переменные через `SetEnv DB_HOST ...` в `.htaccess` — `getenv()` их увидит).
+5. `mod_rewrite` на shared-хостинге обычно уже включён; если ЧПУ не работает — включите в панели (правила в `public/.htaccess` уже есть).
+6. CLI нет → миграции только через phpMyAdmin (шаг 4 выше).
+
+### 3. Вариант B: VDS/VPS (Ubuntu 24.04 + nginx + PHP-FPM + MariaDB) — рекомендуемый
+
+```bash
+# --- пакеты ---
+sudo apt update
+sudo apt install -y nginx mariadb-server php8.2-fpm php8.2-mysql php8.2-mbstring \
+    php8.2-xml php8.2-curl git composer unzip certbot python3-certbot-nginx ufw
+
+# --- база ---
+sudo mysql_secure_installation          # задайте пароль root, отключите удалённый root
+sudo mysql -u root -p -e "CREATE DATABASE uchet CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  CREATE USER 'uchet'@'localhost' IDENTIFIED BY 'очень_сложный_пароль';
+  GRANT ALL PRIVILEGES ON uchet.* TO 'uchet'@'localhost'; FLUSH PRIVILEGES;"
+
+# --- код ---
+sudo mkdir -p /var/www && sudo chown $USER /var/www
+git clone https://github.com/vlad1983slav-coder/uchet.git /var/www/uchet
+cd /var/www/uchet
+composer install --no-dev --optimize-autoloader
+cp .env.example .env && nano .env        # APP_DEBUG=false, APP_URL=https://erp.example.ru, DB_*...
+php database/migrate.php                 # наполнение схемы + сиды
+sudo chown -R www-data:www-data storage
+
+# --- nginx ---
+sudo tee /etc/nginx/sites-available/uchet >/dev/null <<'EOF'
+server {
+    listen 80;
+    server_name erp.example.ru;
+    root /var/www/uchet/public;
+    index index.php;
+
+    location / { try_files $uri $uri/ /index.php?$query_string; }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    # защита: .env, *.sql, логи, скрытые файлы — не отдавать
+    location ~ /\.(?!well-known) { deny all; }
+    location ~* \.(env|sql|log|json|lock)$ { deny all; }
+}
+EOF
+sudo ln -sf /etc/nginx/sites-available/uchet /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+
+# --- HTTPS ---
+sudo certbot --nginx -d erp.example.ru
+
+# --- firewall: наружу только SSH и веб; 3306 остаётся на localhost ---
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
+```
+
+### 4. Вариант C: Docker (быстрый старт)
+
+В репозитории есть `docker-compose.yml` и `docker/Dockerfile` (PHP 8.2 + Apache, docroot=`public/`, MariaDB 10.6):
+
+```bash
+cp .env.example .env       # поправьте: DB_HOST=db, DB_USERNAME=root, DB_PASSWORD=rootsecret
+sed -i 's/^APP_DEBUG=.*/APP_DEBUG=true/; s|^APP_URL=.*|APP_URL=http://localhost:8000|' .env
+docker compose up -d --build
+docker compose exec app php database/migrate.php
+# открыть http://localhost:8000  →  admin / admin123
+```
+
+### 5. Production-hardening (обязательный чек-лист)
+
+- `APP_DEBUG=false` в `.env` — иначе наружу уйдут трейсы и пути файлов (ошибки при этом пишутся в `storage/logs/error.log`)
+- `APP_URL=https://ваш-домен` — для корректных абсолютных ссылок
+- HTTPS-редирект — добавьте в `public/.htaccess`:
+  ```apache
+  RewriteCond %{HTTPS} off
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  ```
+- БД слушает только `localhost` (в MariaDB так по умолчанию), firewall закрыт (`ufw`), пользователю БД выданы права **только на `uchet.*`**
+- `docroot = public/` + deny-правила в `.htaccess`/nginx (см. выше) — `.env`, `*.sql`, логи не должны отдаваться вебом
+- пароли `admin/sklad/manager` сменены сразу после первого входа; неиспользуемые учётки отключены (`is_active=0`)
+- `storage/logs/error.log` — настройте ротацию (logrotate), иначе разрастается
+- opcache включён (в php-fpm production — по умолчанию)
+
+### 6. Резервное копирование (cron, ежедневно в 03:00)
+
+```bash
+sudo mkdir -p /var/backups/uchet
+sudo crontab -e
+# добавить:
+0 3 * * * mysqldump -u uchet -p'пароль' uchet | gzip > /var/backups/uchet/uchet-$(date +\%F).sql.gz
+0 4 * * * find /var/backups/uchet -name 'uchet-*.sql.gz' -mtime +14 -delete
+```
+Восстановление: `gunzip < /var/backups/uchet/uchet-2026-11-03.sql.gz | mysql -u uchet -p uchet`
+Проект ведите в git — тогда бэкап кода = `git clone` репозитория.
+
+### 7. Обновление на боевом сервере
+
+```bash
+cd /var/www/uchet
+git pull
+composer install --no-dev --optimize-autoloader
+php database/migrate.php             # применятся только новые миграции (идемпотентно)
+sudo systemctl reload php8.2-fpm     # сброс opcache
+```
+
+### 8. Типичные проблемы и решения
+
+| Симптом | Причина / решение |
+|---|---|
+| Белый экран, 500 | Смотрите `storage/logs/error.log`; временно `APP_DEBUG=true`. Часто — нет прав на `storage/` → `chown www-data storage` |
+| 404 на всех URL, кроме `/index.php` | Не работает ЧПУ: Apache — `a2enmod rewrite` + `AllowOverride All`; nginx — `try_files ... /index.php` |
+| «Не удалось подключиться к БД» | Проверьте `.env`/`SetEnv`; `mysql -h 127.0.0.1 -u uchet -p uchet` должно работать; при unix-сокете — `DB_HOST=localhost` |
+| Ошибки сессии / CSRF (419) | Нет прав на запись в `storage/sessions` → `chown -R www-data:www-data storage` |
+| Кракозябры | Соединение/БД в utf8mb4 — в схеме уже `charset=utf8mb4` |
+| Медленно | opcache включён; индексы созданы в `schema.sql`; списки пагинируются (`per_page` до 100) |
+
+---
 
 ## Пример работы (сценарий)
 

@@ -14,9 +14,33 @@ if (!defined('ROOT')) {
 }
 
 if (!function_exists('env')) {
-    /** Переменная окружения с значением по умолчанию. */
+    /**
+     * Переменная окружения со значением по умолчанию.
+     * Если задан реальный env — берётся он; иначе один раз парсится файл ROOT/.env
+     * (удобно на shared-хостинге, где нельзя выставить переменные окружения).
+     */
     function env(string $key, mixed $default = null): mixed
     {
+        static $envFileLoaded = false;
+        if (!$envFileLoaded) {
+            $envFileLoaded = true;
+            $file = ROOT . '/.env';
+            if (is_file($file)) {
+                foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+                    $line = trim($line);
+                    if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+                        continue;
+                    }
+                    [$k, $v] = explode('=', $line, 2);
+                    $k = trim($k);
+                    $v = trim(trim($v), "\"'");
+                    if ($k !== '' && getenv($k) === false) {
+                        putenv($k . '=' . $v);
+                        $_ENV[$k] = $v;
+                    }
+                }
+            }
+        }
         $value = getenv($key);
 
         return $value === false ? $default : $value;

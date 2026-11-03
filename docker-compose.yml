@@ -1,0 +1,38 @@
+# UCHET в Docker: app (PHP 8.2 + Apache, docroot=public) + MariaDB 10.6
+# Запуск:
+#   cp .env.example .env          # и поправьте: DB_HOST=db, DB_USERNAME=root, DB_PASSWORD=rootsecret
+#   docker compose up -d --build
+#   docker compose exec app php database/migrate.php   # первичное наполнение БД
+#   открыть http://localhost:8000  (admin / admin123)
+services:
+  app:
+    build: ./docker
+    container_name: uchet-app
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./:/var/www/html
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:10.6
+    container_name: uchet-db
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: uchet
+      MARIADB_ROOT_PASSWORD: rootsecret
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  dbdata:
