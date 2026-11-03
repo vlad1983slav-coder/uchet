@@ -1,0 +1,10 @@
+/vendor/
+/composer.lock
+/storage/logs/*
+/storage/cache/*
+/storage/sessions/*
+/public/uploads/*
+!.gitkeep
+/.env
+*.log
+.DS_Store
